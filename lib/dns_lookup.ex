@@ -11,6 +11,15 @@ defmodule DnsLookup do
     "DNSKEY"
   ]
 
+  def get_records(domain, records) when is_list(records) do
+    records
+    |> Enum.map(&(Task.async(fn -> get_records(domain, &1) end)))
+    |> Enum.map(&Task.await/1)
+    |> Enum.flat_map(fn 
+        {:ok, results} -> results
+        {:error, _} -> []
+    end)
+  end
   def get_records(_domain, record) when record not in @records do
     {:error, :invalid_record}
   end
