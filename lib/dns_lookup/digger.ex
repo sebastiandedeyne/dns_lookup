@@ -8,25 +8,35 @@ defmodule DnsLookup.Digger do
       record,
       "+multiline",
       "+noall",
-      "+answer"
+      "+answer",
+      "+time=4"
     ])
 
     case results do
       {";; connection timed out; no servers could be reached\n", 9} -> {:error, :timeout}
       {"", 0} -> {:error, :unknown_host}
       {_, 1} -> {:error, :failed}
-      {results, 0} -> {:ok, parse(results)}
+      {results, 0} -> {:ok, results}
     end
   end
 
   @doc """
   ## Examples
 
-      iex> DnsLookup.Digger.parse("sebastiandedeyne.com.\\t1622 IN\\tA 188.166.163.155\\n")
+      iex> ~s(sebastiandedeyne.com.\\t1622 IN\\tA 188.166.163.155\\n)
+      ...> |> DnsLookup.Digger.parse()
       [%DnsLookup.Record{name: "sebastiandedeyne.com.", ttl: 1622, type: "A", value: "188.166.163.155"}]
 
-      iex> DnsLookup.Digger.parse("google.com.\\t21599 IN\\tNS ns1.google.com.\\ngoogle.com.\\t21599 IN\\tNS ns2.google.com.\\n")
-      [%DnsLookup.Record{name: "google.com.", ttl: 21599, type: "NS", value: "ns1.google.com."},%DnsLookup.Record{name: "google.com.", ttl: 21599, type: "NS", value: "ns2.google.com."}]
+      iex> ~s(google.com.\\t21599 IN\\tNS ns1.google.com.\\ngoogle.com.\\t21599 IN\\tNS ns2.google.com.\\n)
+      ...> |> DnsLookup.Digger.parse()
+      [
+        %DnsLookup.Record{name: "google.com.", ttl: 21599, type: "NS", value: "ns1.google.com."},
+        %DnsLookup.Record{name: "google.com.", ttl: 21599, type: "NS", value: "ns2.google.com."}
+      ]
+
+      iex> ~s(google.com.\\t3570 IN\\tTXT "v=spf1 include:_spf.google.com ~all"\\n)
+      ...> |> DnsLookup.Digger.parse()
+      [%DnsLookup.Record{name: "google.com.", ttl: 3570, type: "TXT", value: "v=spf1 include:_spf.google.com ~all"}]
   """
   def parse(records) do
     records
@@ -38,10 +48,12 @@ defmodule DnsLookup.Digger do
   defp parse_record(record) do
     [name, ttl, _, type, value] = 
       record
-      |> String.split(~r/[ \t]/)
+      |> String.replace(~r/[ \t]+/, " ")
+      |> String.trim("\n")
+      |> String.split(" ", parts: 5)
       |> Enum.reject(&empty?/1)
 
-    %DnsLookup.Record{name: name, ttl: String.to_integer(ttl), type: type, value: value}
+    %DnsLookup.Record{name: name, ttl: String.to_integer(ttl), type: type, value: String.trim(value, ~s("))}
   end
 
   defp empty?(""), do: true
