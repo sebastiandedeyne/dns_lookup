@@ -1,6 +1,11 @@
 # DnsLookup
 
-**TODO: Add description**
+A wrapper around the `dig` command to look up a domain's dns records in your Elixir application.
+
+```elixir
+DnsLookup.get_records("sebastiandedeyne.com", ["A"])
+# {:ok, [%DnsLookup.Record{name: "sebastiandedeyne.com.", ttl: 1622, type: "A", value: "188.166.163.155"}]}
+```
 
 ## Installation
 
